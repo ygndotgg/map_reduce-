@@ -7,22 +7,21 @@ use std::{
     hash::{DefaultHasher, Hash},
 };
 
-use crate::models::{KeyValue, Report, TaskData, TaskStatus, TaskType};
+use crate::models::{KeyValue, Report, TaskData, TaskType};
 
 pub struct Worker {
     pub task_data: TaskData,
     pub task_type: TaskType,
-    pub status: TaskStatus,
 }
 
 impl Worker {
-    pub fn new(data: TaskData, typo: TaskType, status: TaskStatus) -> Worker {
+    pub fn new(data: TaskData, typo: TaskType) -> Worker {
         Worker {
             task_data: data,
             task_type: typo,
-            status: status,
         }
     }
+
     pub fn run(&self) -> Report {
         match self.task_type {
             TaskType::Map => {
