@@ -1,4 +1,11 @@
-use std::{fs::read_to_string, hash::{DefaultHasher, Hash}};
+use std::fs::{File, OpenOptions};
+use std::hash::Hasher;
+use std::io::Write;
+use std::{
+    fs::read_to_string,
+    hash::{DefaultHasher, Hash},
+    ptr::hash,
+};
 
 use crate::models::{KeyValue, TaskData, TaskStatus, TaskType};
 
@@ -24,7 +31,12 @@ impl Worker {
                 let content = read_to_string(&data.input_files[0]).expect("Invalid File");
                 let kvs: Vec<KeyValue> = map(&data.input_files[0], content);
                 for kv in kvs {
-                    let partion = kv.key 
+                    let value = format!("{}:{}", kv.key, kv.value);
+                    let partion_id = ihash(kv.key) % self.task_data.n_reduce;
+                    let filename = format!("mr-{}-{}", self.task_data.task_id, partion_id);
+                    let mut file = File::create(filename).expect("A Valid Filename is expected");
+                    file.write_all(value.as_bytes())
+                        .expect("Failed to write into the file");
                 }
             }
             TaskType::Reduce => {}
@@ -41,8 +53,8 @@ fn map(filename: &String, content: String) -> Vec<KeyValue> {
         .collect()
 }
 
-pub fn ihash(key:String) -> u32 {
-    let hasher = DefaultHasher::new();
+pub fn ihash(key: String) -> u32 {
+    let mut hasher = DefaultHasher::new();
     key.hash(&mut hasher);
     hasher.finish() as u32
 }
