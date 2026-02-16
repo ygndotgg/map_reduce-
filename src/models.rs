@@ -23,12 +23,6 @@ pub enum TaskType {
     Reduce,
 }
 
-pub enum TaskStatus {
-    Completed,
-    InProgress,
-    Idle,
-}
-
 pub enum Report {
     MapDone {
         taskid: u32,

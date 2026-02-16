@@ -24,7 +24,7 @@ pub enum Tasktype {
     Exit,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskStatus {
     Idle,
     InProgress,

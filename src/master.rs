@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     models::{TaskData, TaskStatus, TaskType},
+    rpc::{Request, Response, TaskStatus},
     worker::Worker,
 };
 
@@ -12,52 +13,98 @@ pub enum Phase {
 }
 
 pub struct Master {
-    map_task: HashMap<usize, String>,
-    reduce_task: HashMap<usize, String>,
-    phase: Phase,
-    n_reduce: u32,
-    input_files: Vec<String>,
-    output: String,
-    map_outputs: HashMap<usize, HashMap<usize, String>>,
+    pub map_task: HashMap<u32, TaskStatus>,
+    pub reduce_task: HashMap<u32, TaskStatus>,
+    pub phase: Phase,
+    pub n_reduce: u32,
+    pub input_files: Vec<String>,
+    pub output: String,
+    pub map_outputs: HashMap<u32, HashMap<u32, String>>,
 }
 
 impl Master {
-    pub fn new() -> Master {
+    pub fn new(input_files: Vec<String>, n_reduce: u32, output_path: String) -> Master {
+        let mut map_task = HashMap::new();
+        for (i, _) in input_files.iter().enumerate() {
+            map_task.insert(i as u32, TaskStatus::Idle);
+        }
         Master {
-            map_task: HashMap::new(),
+            map_task,
             reduce_task: HashMap::new(),
             phase: Phase::Map,
-            n_reduce: 2,
-            input_files: vec!["abc.txt".to_string(), "bbc.txt".to_string()],
+            n_reduce,
+            input_files,
             map_outputs: HashMap::new(),
-            output: "output".to_string(),
+            output: output_path,
         }
     }
-
-    pub fn map_task_adder(&self) -> HashMap<usize, String> {
-        let mut hs = HashMap::new();
-        for (i, file) in self.input_files.iter().enumerate() {
-            hs.insert(i, file.clone());
+    pub fn handle_request(&mut self, req: Request) -> Response {
+        match req {
+            Request::GetTask => self.get_task(),
+            Request::MapDone { task_id, files } => {
+                unimplemented!()
+            }
+            Request::ReduceDone { task_id } => {
+                unimplemented!()
+            }
         }
-        hs
     }
-}
+    fn get_task(&mut self) -> Response {
+        match self.phase {
+            Phase::Map => {
+                let task_id = self
+                    .map_task
+                    .iter()
+                    .find(|(_, status)| **status == TaskStatus::Idle)
+                    .map(|(id, _)| *id);
+                if let Some(id) = task_id {
+                    self.map_task.insert(id, TaskStatus::InProgress);
 
-pub fn main_run() {
-    let mut a = Master::new();
-    a.map_task = a.map_task_adder();
-    for i in a.map_task {
-        let mut ve = vec![i.1];
-        let d = Worker::new(
-            TaskData {
-                task_id: i.0 as u32,
-                input_files: ve,
-                n_reduce: a.n_reduce,
-                output_path: a.output.clone(),
-            },
-            TaskType::Map,
-            TaskStatus::InProgress,
-        );
-        let k = d.run();
+                    return Response::Task {
+                        task_type: crate::rpc::Tasktype::Map,
+                        task_data: crate::rpc::TaskData {
+                            task_id: id,
+                            input_files: vec![self.input_files[id as usize].clone()],
+                            n_reduce: self.n_reduce,
+                            output_path: self.output.clone(),
+                        },
+                    };
+                }
+                Response::NoTask
+            }
+            Phase::Reduce => {
+                let task_id = self
+                    .reduce_task
+                    .iter()
+                    .find(|(_, status)| **status == TaskStatus::Idle)
+                    .map(|(id, _)| *id);
+                if let Some(id) = task_id {
+                    self.reduce_task.insert(id, TaskStatus::InProgress);
+                    // collect all intermediate files
+                    let mut input_files = Vec::new();
+                    for (_map_id, files) in &self.map_outputs {
+                        if let Some(file) = files.get(&id) {
+                            input_files.push(file.clone());
+                        }
+                    }
+                    return Response::Task {
+                        task_type: crate::rpc::Tasktype::Reduce,
+                        task_data: crate::rpc::TaskData {
+                            task_id: id,
+                            input_files,
+                            n_reduce: self.n_reduce,
+                            output_path: self.output.clone(),
+                        },
+                    };
+                }
+                Response::NoTask
+            }
+            Phase::Done => Response::Exit,
+        }
+    }
+    fn handle_map_done(&mut self, task_id: u32, files: HashMap<u32, String>) {
+        self.map_task.insert(task_id,TaskStatus::Completed);
+        self.map_outputs.insert(task_id,files);
+        let all_done = self.map_task.values().all(|s|*s == TaskStatus::Completed);
     }
 }
