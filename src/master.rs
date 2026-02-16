@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+use crate::{
+    models::{TaskData, TaskStatus, TaskType},
+    worker::Worker,
+};
+
 pub enum Phase {
     Map,
     Reduce,
@@ -12,9 +17,9 @@ pub struct Master {
     phase: Phase,
     n_reduce: u32,
     input_files: Vec<String>,
+    output: String,
     map_outputs: HashMap<usize, HashMap<usize, String>>,
 }
-
 
 impl Master {
     pub fn new() -> Master {
@@ -25,6 +30,7 @@ impl Master {
             n_reduce: 2,
             input_files: vec!["abc.txt".to_string(), "bbc.txt".to_string()],
             map_outputs: HashMap::new(),
+            output: "output".to_string(),
         }
     }
 
@@ -37,10 +43,21 @@ impl Master {
     }
 }
 
-
-
-
 pub fn main_run() {
     let mut a = Master::new();
     a.map_task = a.map_task_adder();
+    for i in a.map_task {
+        let mut ve = vec![i.1];
+        let d = Worker::new(
+            TaskData {
+                task_id: i.0 as u32,
+                input_files: ve,
+                n_reduce: a.n_reduce,
+                output_path: a.output.clone(),
+            },
+            TaskType::Map,
+            TaskStatus::InProgress,
+        );
+        let k = d.run();
+    }
 }
