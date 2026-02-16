@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::fs::{File, OpenOptions};
 use std::hash::Hasher;
 use std::io::Write;
@@ -7,7 +8,7 @@ use std::{
     ptr::hash,
 };
 
-use crate::models::{KeyValue, TaskData, TaskStatus, TaskType};
+use crate::models::{KeyValue, Report, TaskData, TaskStatus, TaskType};
 
 struct Worker {
     task_data: TaskData,
@@ -23,10 +24,12 @@ impl Worker {
             status: status,
         }
     }
-    pub fn run(&self) {
+    pub fn run(&self) -> Report {
         match self.task_type {
             TaskType::Map => {
                 let data = &self.task_data;
+                let mut files = HashMap::new();
+                let mut hashe = HashSet::new();
                 // we know that we only get a single input_file
                 let content = read_to_string(&data.input_files[0]).expect("Invalid File");
                 let kvs: Vec<KeyValue> = map(&data.input_files[0], content);
@@ -34,12 +37,27 @@ impl Worker {
                     let value = format!("{}:{}", kv.key, kv.value);
                     let partion_id = ihash(kv.key) % self.task_data.n_reduce;
                     let filename = format!("mr-{}-{}", self.task_data.task_id, partion_id);
-                    let mut file = File::create(filename).expect("A Valid Filename is expected");
+                    let mut file = OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(&filename)
+                        .expect("Unable to Open");
                     file.write_all(value.as_bytes())
                         .expect("Failed to write into the file");
+                    hashe.insert(filename);
+                }
+                for file in hashe {
+                    files.insert(self.task_data.task_id, file);
+                }
+                Report::MapDone {
+                    taskid: self.task_data.task_id,
+                    files,
                 }
             }
-            TaskType::Reduce => {}
+            TaskType::Reduce => {
+                
+                unimplemented!("ra")
+            }
         }
     }
 }

@@ -1,5 +1,7 @@
 // use serde::{Deserialize, Serialize};
 
+use std::collections::HashMap;
+
 pub struct KeyValue {
     pub key: String,
     pub value: String,
@@ -25,4 +27,14 @@ pub enum TaskStatus {
     Completed,
     InProgress,
     Idle,
+}
+
+pub enum Report {
+    MapDone {
+        taskid: u32,
+        files: HashMap<u32, String>,
+    },
+    ReducerDone {
+        taskid: u32,
+    },
 }
