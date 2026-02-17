@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    models::{TaskData, TaskStatus, TaskType},
-    rpc::{Request, Response, TaskStatus},
-    worker::Worker,
-};
+use crate::rpc::{Request, Response, TaskStatus};
 
 pub enum Phase {
     Map,
@@ -42,10 +38,12 @@ impl Master {
         match req {
             Request::GetTask => self.get_task(),
             Request::MapDone { task_id, files } => {
-                unimplemented!()
+                self.handle_map_done(task_id, files);
+                Response::NoTask
             }
             Request::ReduceDone { task_id } => {
-                unimplemented!()
+                self.handle_reduce_done(task_id);
+                Response::NoTask
             }
         }
     }
@@ -103,8 +101,26 @@ impl Master {
         }
     }
     fn handle_map_done(&mut self, task_id: u32, files: HashMap<u32, String>) {
-        self.map_task.insert(task_id,TaskStatus::Completed);
-        self.map_outputs.insert(task_id,files);
-        let all_done = self.map_task.values().all(|s|*s == TaskStatus::Completed);
+        self.map_task.insert(task_id, TaskStatus::Completed);
+        self.map_outputs.insert(task_id, files);
+        let all_done = self.map_task.values().all(|s| *s == TaskStatus::Completed);
+        if all_done {
+            self.phase = Phase::Reduce;
+            for i in 0..self.n_reduce {
+                self.reduce_task.insert(i, TaskStatus::Idle);
+            }
+            println!("All map task done switching to Reduce Phase");
+        }
+    }
+    fn handle_reduce_done(&mut self, task_id: u32) {
+        self.reduce_task.insert(task_id, TaskStatus::Completed);
+        let all_done = self
+            .reduce_task
+            .values()
+            .all(|s| *s == TaskStatus::Completed);
+        if all_done {
+            self.phase = Phase::Done;
+            println!("ALl reduce tasks done, job completed!");
+        }
     }
 }
