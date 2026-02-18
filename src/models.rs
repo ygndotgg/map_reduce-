@@ -11,18 +11,6 @@ pub type MapFunction = fn(String, String) -> Vec<KeyValue>;
 
 pub type ReduceFunction = fn(String, Vec<String>) -> String;
 
-pub struct TaskData {
-    pub task_id: u32,
-    pub input_files: Vec<String>,
-    pub n_reduce: u32,
-    pub output_path: String,
-}
-
-pub enum TaskType {
-    Map,
-    Reduce,
-}
-
 pub enum Report {
     MapDone {
         taskid: u32,
@@ -31,4 +19,5 @@ pub enum Report {
     ReducerDone {
         taskid: u32,
     },
+    Exit,
 }

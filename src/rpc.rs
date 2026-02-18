@@ -17,7 +17,7 @@ pub enum Request {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-pub enum Tasktype {
+pub enum TaskType {
     Map,
     Reduce,
     Idle,
@@ -38,7 +38,7 @@ pub enum Phase {
     Done,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TaskData {
     pub task_id: u32,             // unique id
     pub input_files: Vec<String>, // files for the task to process
@@ -47,10 +47,10 @@ pub struct TaskData {
 }
 
 // master -> worker
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Response {
     Task {
-        task_type: Tasktype,
+        task_type: TaskType,
         task_data: TaskData,
     },
     NoTask,

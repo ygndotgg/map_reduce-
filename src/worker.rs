@@ -7,7 +7,9 @@ use std::{
     hash::{DefaultHasher, Hash},
 };
 
-use crate::models::{KeyValue, Report, TaskData, TaskType};
+use crate::models::{KeyValue, Report};
+use crate::rpc::TaskData;
+use crate::rpc::TaskType;
 
 pub struct Worker {
     pub task_data: TaskData,
@@ -29,6 +31,12 @@ impl Worker {
 
     pub fn run(&self) -> Report {
         match self.task_type {
+            TaskType::Idle => {
+                // Should not happen - worker should not get idle task
+                std::thread::sleep(std::time::Duration::from_secs(1));
+                Report::Exit
+            }
+            TaskType::Exit => Report::Exit,
             TaskType::Map => {
                 let data = &self.task_data;
                 let mut files = HashMap::new();
@@ -40,7 +48,7 @@ impl Worker {
                     let value = format!("{},{};", kv.key, kv.value);
                     let partion_id = ihash(kv.key) % self.task_data.n_reduce;
                     let filename =
-                        format!("{}mr/{}-{}", data.output_path, data.task_id, partion_id);
+                        format!("{}/mr-{}-{}", data.output_path, data.task_id, partion_id);
                     let mut file = OpenOptions::new()
                         .create(true)
                         .append(true)

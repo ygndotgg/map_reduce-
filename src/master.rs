@@ -59,7 +59,7 @@ impl Master {
                     self.map_task.insert(id, TaskStatus::InProgress);
 
                     return Response::Task {
-                        task_type: crate::rpc::Tasktype::Map,
+                        task_type: crate::rpc::TaskType::Map,
                         task_data: crate::rpc::TaskData {
                             task_id: id,
                             input_files: vec![self.input_files[id as usize].clone()],
@@ -86,7 +86,7 @@ impl Master {
                         }
                     }
                     return Response::Task {
-                        task_type: crate::rpc::Tasktype::Reduce,
+                        task_type: crate::rpc::TaskType::Reduce,
                         task_data: crate::rpc::TaskData {
                             task_id: id,
                             input_files,

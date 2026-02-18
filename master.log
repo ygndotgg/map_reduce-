@@ -1,0 +1,82 @@
+Master listening on 127.0.0.1:7799
+Waiting for workers...
+[Master] New worker connected
+[Master] New worker connected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Received: "GetTask"
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] Worker disconnected
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"MapDone":{"task_id":2,"files":{"4":"output/mr-2-4","3":"output/mr-2-3","1":"output/mr-2-1","0":"output/mr-2-0","2":"output/mr-2-2"}}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"MapDone":{"task_id":3,"files":{"3":"output/mr-3-3","2":"output/mr-3-2","1":"output/mr-3-1","0":"output/mr-3-0","4":"output/mr-3-4"}}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"MapDone":{"task_id":0,"files":{"4":"output/mr-0-4","1":"output/mr-0-1","0":"output/mr-0-0","3":"output/mr-0-3","2":"output/mr-0-2"}}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"MapDone":{"task_id":1,"files":{"3":"output/mr-1-3","0":"output/mr-1-0","2":"output/mr-1-2","1":"output/mr-1-1","4":"output/mr-1-4"}}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"MapDone":{"task_id":4,"files":{"3":"output/mr-4-3","0":"output/mr-4-0","2":"output/mr-4-2","1":"output/mr-4-1","4":"output/mr-4-4"}}}
+All map task done switching to Reduce Phase
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"ReduceDone":{"task_id":0}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"ReduceDone":{"task_id":1}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"ReduceDone":{"task_id":2}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"ReduceDone":{"task_id":4}}
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: {"ReduceDone":{"task_id":3}}
+ALl reduce tasks done, job completed!
+[Master] Worker disconnected
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker exiting
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker exiting
+[Master] New worker connected
+[Master] Received: "GetTask"
+[Master] Worker exiting
