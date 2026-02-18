@@ -18,41 +18,38 @@ fn handle_worker(mut stream: std::net::TcpStream, master: Arc<std::sync::Mutex<M
 
         match buf.read_line(&mut line) {
             Ok(0) => {
-                println!("[Master] Worker disconnected");
+                log::info!("Worker disconnected");
                 break;
             }
             Ok(_) => {
-                println!("[Master] Received: {}", line.trim());
+                log::debug!("Received: {}", line.trim());
                 let req: Request = match serde_json::from_str(&line) {
                     Ok(r) => r,
                     Err(e) => {
-                        println!("[Master] Parse error: {}", e);
+                        log::error!("Parse error: {}", e);
                         break;
                     }
                 };
 
                 // Handle request
                 let mut master = master.lock().unwrap();
-                println!("[Master] Calling handle_request");
                 let resp = master.handle_request(req);
-                println!("[Master] Got response, sending...");
 
                 // Send response
                 serde_json::to_writer(&stream, &resp).unwrap();
                 writeln!(&stream).unwrap();
                 stream.flush().unwrap();
-                println!("[Master] Response sent");
 
                 match resp {
                     mapreduce::rpc::Response::Exit => {
-                        println!("[Master] Worker exiting");
+                        log::info!("Worker exiting");
                         break;
                     }
                     _ => {}
                 }
             }
             Err(e) => {
-                println!("[Master] Read error: {}", e);
+                log::error!("Read error: {}", e);
                 break;
             }
         }
@@ -60,9 +57,15 @@ fn handle_worker(mut stream: std::net::TcpStream, master: Arc<std::sync::Mutex<M
 }
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input_files = (1..=5).map(|i| format!("input/file{i}.txt")).collect();
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+
     let args: Vec<String> = env::args().collect();
-    let n_reduce = 5;
+    let port = args.get(1).map(|s| s.as_str()).unwrap_or("7799");
+    let n_reduce: u32 = 5;
+
+    let input_files = (1..=5).map(|i| format!("input/file{i}.txt")).collect();
     let output_path = "output".to_string();
 
     let master = Arc::new(std::sync::Mutex::new(Master::new(
@@ -74,15 +77,15 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Spawn health check thread (30 second timeout, check every 10 seconds)
     let master_for_health = Arc::clone(&master);
     start_health_check(master_for_health, 30, 10);
-    let addr = format!("127.0.0.1:{}", args[1]);
+
+    let addr = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(&addr)?;
-    println!("Master listening on {}", addr);
-    println!("Waiting for workers...");
+    log::info!("Master listening on {}", addr);
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                println!("[Master] New worker connected");
+                log::info!("New worker connected");
                 let master = Arc::clone(&master);
 
                 thread::spawn(move || {
@@ -90,7 +93,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 });
             }
             Err(e) => {
-                println!("[Master] Connection error: {}", e);
+                log::error!("Connection error: {}", e);
             }
         }
     }

@@ -28,7 +28,8 @@ pub enum TaskType {
 pub enum TaskStatus {
     Idle,
     InProgress {
-        start_time:std::time::Instant
+        start_time: std::time::Instant,
+        backup_scheduled: bool,
     },
     Completed,
 }

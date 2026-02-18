@@ -27,17 +27,29 @@ fn send_request(
 }
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+
     let args: Vec<String> = env::args().collect();
-    let addr = format!("127.0.0.1:{}", args[1]);
+    let port = args.get(1).map(|s| s.as_str()).unwrap_or("7799");
+
+    let addr = format!("127.0.0.1:{}", port);
+    log::info!("Worker connecting to {}", addr);
+
     let mut connect = TcpStream::connect(addr)?;
     loop {
-        println!("[Worker] Asking for task...");
+        log::info!("Asking for task...");
         let resp = send_request(&Request::GetTask, &mut connect)?;
 
-        println!("[Worker] Got response: {:?}", resp);
+        log::debug!("Got response: {:?}", resp);
         match resp {
-            Response::Exit => break,
+            Response::Exit => {
+                log::info!("Received Exit, shutting down");
+                break;
+            }
             Response::NoTask => {
+                log::debug!("No task available, sleeping...");
                 std::thread::sleep(std::time::Duration::from_secs(2));
             }
             Response::Task {
@@ -49,7 +61,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 match report {
                     mapreduce::models::Report::MapDone { taskid, files } => {
-                        println!("[Worker] Map done, sending MapDone...");
+                        log::info!("Map task {} complete, sending MapDone...", taskid);
                         let req = Request::MapDone {
                             task_id: taskid,
                             files,
@@ -57,7 +69,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                         send_request(&req, &mut connect)?;
                     }
                     mapreduce::models::Report::ReducerDone { taskid } => {
-                        println!("[Worker] Reduce done, sending ReduceDone...");
+                        log::info!("Reduce task {} complete, sending ReduceDone...", taskid);
                         let req = Request::ReduceDone { task_id: taskid };
                         send_request(&req, &mut connect)?;
                     }

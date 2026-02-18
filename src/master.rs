@@ -4,6 +4,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::rpc::{Phase, Request, Response, TaskStatus};
+use log;
 
 pub struct Master {
     pub map_task: HashMap<u32, TaskStatus>,
@@ -54,11 +55,13 @@ impl Master {
                     .iter()
                     .find(|(_, status)| matches!(status, TaskStatus::Idle))
                     .map(|(id, _)| *id);
+
                 if let Some(id) = task_id {
                     self.map_task.insert(
                         id,
                         TaskStatus::InProgress {
                             start_time: std::time::Instant::now(),
+                            backup_scheduled: false,
                         },
                     );
 
@@ -72,6 +75,40 @@ impl Master {
                         },
                     };
                 }
+
+                let backup_threshold = Duration::from_secs(10);
+                let backup_task = self
+                    .map_task
+                    .iter()
+                    .find(|(_, status)| {
+                        matches!(status, TaskStatus::InProgress { start_time, backup_scheduled } 
+                            if !backup_scheduled && start_time.elapsed() > backup_threshold)
+                    })
+                    .map(|(id, _)| *id);
+
+                if let Some(id) = backup_task {
+                    log::info!("Scheduling backup for map task {}", id);
+                    if let Some(TaskStatus::InProgress { start_time, .. }) = self.map_task.get(&id)
+                    {
+                        self.map_task.insert(
+                            id,
+                            TaskStatus::InProgress {
+                                start_time: *start_time,
+                                backup_scheduled: true,
+                            },
+                        );
+                    }
+                    return Response::Task {
+                        task_type: crate::rpc::TaskType::Map,
+                        task_data: crate::rpc::TaskData {
+                            task_id: id,
+                            input_files: vec![self.input_files[id as usize].clone()],
+                            n_reduce: self.n_reduce,
+                            output_path: self.output.clone(),
+                        },
+                    };
+                }
+
                 Response::NoTask
             }
             Phase::Reduce => {
@@ -85,9 +122,9 @@ impl Master {
                         id,
                         TaskStatus::InProgress {
                             start_time: std::time::Instant::now(),
+                            backup_scheduled: false,
                         },
                     );
-                    // collect all intermediate files
                     let mut input_files = Vec::new();
                     for (_map_id, files) in &self.map_outputs {
                         if let Some(file) = files.get(&id) {
@@ -104,6 +141,47 @@ impl Master {
                         },
                     };
                 }
+
+                let backup_threshold = Duration::from_secs(10);
+                let backup_task = self
+                    .reduce_task
+                    .iter()
+                    .find(|(_, status)| {
+                        matches!(status, TaskStatus::InProgress { start_time, backup_scheduled }
+                            if !backup_scheduled && start_time.elapsed() > backup_threshold)
+                    })
+                    .map(|(id, _)| *id);
+
+                if let Some(id) = backup_task {
+                    log::info!("Scheduling backup for reduce task {}", id);
+                    if let Some(TaskStatus::InProgress { start_time, .. }) =
+                        self.reduce_task.get(&id)
+                    {
+                        self.reduce_task.insert(
+                            id,
+                            TaskStatus::InProgress {
+                                start_time: *start_time,
+                                backup_scheduled: true,
+                            },
+                        );
+                    }
+                    let mut input_files = Vec::new();
+                    for (_map_id, files) in &self.map_outputs {
+                        if let Some(file) = files.get(&id) {
+                            input_files.push(file.clone());
+                        }
+                    }
+                    return Response::Task {
+                        task_type: crate::rpc::TaskType::Reduce,
+                        task_data: crate::rpc::TaskData {
+                            task_id: id,
+                            input_files,
+                            n_reduce: self.n_reduce,
+                            output_path: self.output.clone(),
+                        },
+                    };
+                }
+
                 Response::NoTask
             }
             Phase::Done => Response::Exit,
@@ -130,7 +208,7 @@ impl Master {
             for i in 0..self.n_reduce {
                 self.reduce_task.insert(i, TaskStatus::Idle);
             }
-            println!("All map task done switching to Reduce Phase");
+            log::info!("All map tasks complete, switching to Reduce phase");
         }
     }
 
@@ -148,7 +226,7 @@ impl Master {
             .all(|s| matches!(s, TaskStatus::Completed));
         if all_done && self.phase == Phase::Reduce {
             self.phase = Phase::Done;
-            println!("All reduce tasks done, job completed!");
+            log::info!("All reduce tasks complete, job finished!");
         }
     }
 
@@ -158,19 +236,18 @@ impl Master {
 
         // Check map tasks
         for (task_id, status) in &mut self.map_task {
-            if let TaskStatus::InProgress { start_time } = status {
+            if let TaskStatus::InProgress { start_time, .. } = status {
                 if start_time.elapsed() > timeout {
-                    println!("Map task {} timed out, resetting to Idle", task_id);
+                    log::warn!("Map task {} timed out, resetting to Idle", task_id);
                     *status = TaskStatus::Idle;
                 }
             }
         }
 
-        // Check reduce tasks
         for (task_id, status) in &mut self.reduce_task {
-            if let TaskStatus::InProgress { start_time } = status {
+            if let TaskStatus::InProgress { start_time, .. } = status {
                 if start_time.elapsed() > timeout {
-                    println!("Reduce task {} timed out, resetting to Idle", task_id);
+                    log::warn!("Reduce task {} timed out, resetting to Idle", task_id);
                     *status = TaskStatus::Idle;
                 }
             }
@@ -188,11 +265,11 @@ pub fn start_health_check(master: Arc<Mutex<Master>>, timeout_secs: u64, check_i
 
             // Only check if not done
             if matches!(master.phase, Phase::Done) {
-                println!("Health check: Job complete, stopping");
+                log::info!("Health check: Job complete, stopping");
                 break;
             }
 
-            println!("Health check: Checking for stuck tasks...");
+            log::debug!("Health check: Checking for stuck tasks...");
             master.health_check(timeout_secs);
         }
     });
