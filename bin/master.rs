@@ -1,20 +1,23 @@
 use std::{
+    env,
     io::{BufRead, BufReader, Write},
     net::TcpListener,
-    sync::{Arc, Mutex},
+    sync::Arc,
     thread,
 };
 
-use mapreduce::{master::Master, rpc::{Request, Response}};
+use mapreduce::{
+    master::{Master, start_health_check},
+    rpc::Request,
+};
 
-fn handle_worker(mut stream: std::net::TcpStream, master: Arc<Mutex<Master>>) {
+fn handle_worker(mut stream: std::net::TcpStream, master: Arc<std::sync::Mutex<Master>>) {
     loop {
         let mut buf = BufReader::new(&mut stream);
         let mut line = String::new();
 
         match buf.read_line(&mut line) {
             Ok(0) => {
-                // Connection closed
                 println!("[Master] Worker disconnected");
                 break;
             }
@@ -28,15 +31,18 @@ fn handle_worker(mut stream: std::net::TcpStream, master: Arc<Mutex<Master>>) {
                     }
                 };
 
-                // Handle request - lock master
+                // Handle request
                 let mut master = master.lock().unwrap();
+                println!("[Master] Calling handle_request");
                 let resp = master.handle_request(req);
+                println!("[Master] Got response, sending...");
 
                 // Send response
                 serde_json::to_writer(&stream, &resp).unwrap();
                 writeln!(&stream).unwrap();
                 stream.flush().unwrap();
-                // If Exit, break
+                println!("[Master] Response sent");
+
                 match resp {
                     mapreduce::rpc::Response::Exit => {
                         println!("[Master] Worker exiting");
@@ -55,13 +61,22 @@ fn handle_worker(mut stream: std::net::TcpStream, master: Arc<Mutex<Master>>) {
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_files = (1..=5).map(|i| format!("input/file{i}.txt")).collect();
+    let args: Vec<String> = env::args().collect();
     let n_reduce = 5;
     let output_path = "output".to_string();
 
-    let master = Arc::new(Mutex::new(Master::new(input_files, n_reduce, output_path)));
+    let master = Arc::new(std::sync::Mutex::new(Master::new(
+        input_files,
+        n_reduce,
+        output_path,
+    )));
 
-    let listener = TcpListener::bind("127.0.0.1:7799")?;
-    println!("Master listening on 127.0.0.1:7799");
+    // Spawn health check thread (30 second timeout, check every 10 seconds)
+    let master_for_health = Arc::clone(&master);
+    start_health_check(master_for_health, 30, 10);
+    let addr = format!("127.0.0.1:{}", args[1]);
+    let listener = TcpListener::bind(&addr)?;
+    println!("Master listening on {}", addr);
     println!("Waiting for workers...");
 
     for stream in listener.incoming() {

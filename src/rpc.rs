@@ -27,7 +27,9 @@ pub enum TaskType {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskStatus {
     Idle,
-    InProgress,
+    InProgress {
+        start_time:std::time::Instant
+    },
     Completed,
 }
 
