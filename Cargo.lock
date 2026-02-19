@@ -526,6 +526,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tonic",
+ "tonic-prost",
  "tonic-prost-build",
 ]
 
@@ -1029,6 +1030,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tonic-prost"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f86539c0089bfd09b1f8c0ab0239d80392af74c21bc9e0f15e1b4aca4c1647f"
+dependencies = [
+ "bytes",
+ "prost",
+ "tonic",
 ]
 
 [[package]]

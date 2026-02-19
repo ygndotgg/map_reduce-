@@ -1,0 +1,29 @@
+
+syntax ="proto3";
+package mapreduce;
+
+service MapReduce {
+  rpc GetTask (Empty) returns (TaskResponse);
+  rpc MapDone (MapDoneRequest) returns (Empty);
+  rpc ReduceDone (ReduceDoneRequest) returns (Empty);
+}
+
+
+message Empty {}
+
+message TaskResponse {
+  string task_type =1;
+  uint32 task_id = 2;
+  repeated string input_files = 3;
+  uint32 n_reduce =4;
+  string output_path =5;
+}
+
+message MapDoneRequest {
+  uint32 task_id =1;
+  map<uint32,string> files =2;
+}
+
+message ReduceDoneRequest {
+  uint32 task_id =1;
+}
