@@ -17,6 +17,13 @@ pub struct Master {
 }
 
 impl Master {
+    fn should_schedule_backup(&self) -> bool {
+        let total = self.map_task.len();
+        let completed = self.map_task.values().filter(|s| matches!(s,TaskStatus::Completed)).count();
+
+        let remaining = total - completed;
+        remaining <= (total as f64 * 0.05) as usize
+    }
     pub fn new(input_files: Vec<String>, n_reduce: u32, output_path: String) -> Master {
         let mut map_task = HashMap::new();
         for (i, _) in input_files.iter().enumerate() {
@@ -48,6 +55,7 @@ impl Master {
     }
 
     fn get_task(&mut self) -> Response {
+
         match self.phase {
             Phase::Map => {
                 let task_id = self
@@ -75,7 +83,8 @@ impl Master {
                         },
                     };
                 }
-
+            if self.should_schedule_backup() {
+                
                 let backup_threshold = Duration::from_secs(10);
                 let backup_task = self
                     .map_task
@@ -108,6 +117,7 @@ impl Master {
                         },
                     };
                 }
+            }
 
                 Response::NoTask
             }
